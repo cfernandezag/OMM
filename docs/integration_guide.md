@@ -15,7 +15,7 @@ Micro-triangles are uniformly distributed over a triangle, this allows for effic
     <img src="images/subdiv/subdiv.png" width=85% height=auto  alt="varying triangle subdivision levels">
 </p>
 
-Up to 12 subdivision levels per triangle is supported. Each subdivision level will generate N^2 subdivisions per edge, or N^4 micro-triangles in total.
+Up to 12 subdivision levels per triangle is supported. Each subdivision level will generate 2^N subdivisions per edge, or 4^N micro-triangles in total.
 
 <p align="center">
     <img src="images/bird/bird.png" width=30% height=auto  alt="bird curve format">
