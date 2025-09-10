@@ -475,6 +475,7 @@ void GpuBakeNvrhiImpl::SetupPipelines(
 				break;
 			}
 
+			resourceItem.size = 1;
 			for (uint32_t descriptorOffset = 0; descriptorOffset < descriptorRange.descriptorNum; descriptorOffset++)
 			{
 				resourceItem.slot = descriptorRange.baseRegisterIndex + descriptorOffset;
