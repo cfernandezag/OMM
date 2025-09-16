@@ -40,6 +40,13 @@ elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/donut/nvrhi AND OMM_INTEGRATION_LAYER_
 	endif()
 endif()
 
+if(TARGET DirectX-Guids)
+	set_property(TARGET DirectX-Guids PROPERTY FOLDER "External/DirectX-Guids")
+endif()
+if(TARGET DirectX-Headers)
+	set_property(TARGET DirectX-Headers PROPERTY FOLDER "External/DirectX-Headers") 
+endif()
+
 # GLM
 add_subdirectory("glm")
 set_property(TARGET glm PROPERTY FOLDER "External") 
@@ -67,7 +74,7 @@ endif()
 
 # xxHash
 set(XXHASH_BUILD_XXHSUM OFF)
-add_subdirectory("xxHash/cmake_unofficial")
+add_subdirectory("xxHash/build/cmake")
 set_property(TARGET xxhash PROPERTY FOLDER "External") 
 
 # stb

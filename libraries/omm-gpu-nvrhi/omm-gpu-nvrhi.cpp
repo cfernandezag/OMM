@@ -613,7 +613,7 @@ void GpuBakeNvrhiImpl::SetupPipelines(
 				gfxDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
 				gfxDesc.renderState.rasterState.frontCounterClockwise = true;
 				gfxDesc.renderState.rasterState.enableScissor(); // <- This is to prevent the framebuffer from implicitly setting the scissor rect...
-				pipeline = m_device->createGraphicsPipeline(gfxDesc, m_nullFbo);
+				pipeline = m_device->createGraphicsPipeline(gfxDesc, m_nullFbo->getFramebufferInfo());
 			}
 			m_pipelines.push_back(pipeline);
 			break;
