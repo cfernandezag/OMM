@@ -961,10 +961,11 @@ private:
             psoDesc.renderState.rasterState.fillMode = nvrhi::RasterFillMode::Wireframe;
             psoDesc.renderState.rasterState.setCullNone();
 
-            m_PipelineWireFrame = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);
+            auto frameBufferInfo = framebuffer->getFramebufferInfo();
+            m_PipelineWireFrame = GetDevice()->createGraphicsPipeline(psoDesc, frameBufferInfo);
             
             psoDesc.renderState.rasterState.fillMode = nvrhi::RasterFillMode::Fill;
-            m_Pipeline = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);
+            m_Pipeline = GetDevice()->createGraphicsPipeline(psoDesc, frameBufferInfo);
         }
 
         if (!m_BackgroundPSO)
@@ -979,7 +980,8 @@ private:
            // psoDesc.renderState.rasterState.setFrontCounterClockwise(true);
             psoDesc.renderState.rasterState.setCullNone();
 
-            m_BackgroundPSO = GetDevice()->createGraphicsPipeline(psoDesc, framebuffer);
+            auto frameBufferInfo = framebuffer->getFramebufferInfo();
+            m_BackgroundPSO = GetDevice()->createGraphicsPipeline(psoDesc, frameBufferInfo);
         }
 
         m_CommandList->open();
