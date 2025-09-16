@@ -699,6 +699,7 @@ omm::Gpu::DispatchConfigDesc GpuBakeNvrhiImpl::GetConfig(const GpuBakeNvrhi::Inp
 	config.texCoordStrideInBytes				= params.texCoordStrideInBytes;
 	config.indexFormat							= GetIndexFormat(params.indexBuffer->getDesc().format);
 	config.indexCount							= (uint32_t)params.numIndices;
+	config.indexOffset							= params.indexOffset;
 	config.globalFormat							= params.format == nvrhi::rt::OpacityMicromapFormat::OC1_2_State ? Format::OC1_2_State : Format::OC1_4_State;
 	config.maxScratchMemorySize					= params.minimalMemoryMode ? Gpu::ScratchMemoryBudget::MB_4 : Gpu::ScratchMemoryBudget::MB_256;
 	config.maxOutOmmArraySize				    = params.maxOutOmmArraySize;
@@ -868,7 +869,6 @@ nvrhi::BufferHandle GpuBakeNvrhiImpl::GetBufferResource(
 		break;
 	case omm::Gpu::ResourceType::IN_INDEX_BUFFER:
 		resourceHandle = params.indexBuffer;
-		offsetInBytes = params.indexBufferOffsetInBytes;
 		break;
 	case omm::Gpu::ResourceType::IN_TEXCOORD_BUFFER:
 		resourceHandle = params.texCoordBuffer;

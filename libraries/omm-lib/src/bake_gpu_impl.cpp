@@ -261,8 +261,6 @@ ommResult  PipelineImpl::Validate(const ommGpuDispatchConfigDesc& config) const
         return m_log.InvalidArg("[Invalid Arg] - indexCount must be non-zero");
     if (config.indexCount % 3 != 0)
         return m_log.InvalidArg("[Invalid Arg] - indexCount must be multiple of 3");
-    if (config.indexOffsetInBytes % 4 != 0)
-        return m_log.InvalidArg("[Invalid Arg] - indexOffsetInBytes must be multiple of 4");
     if (!computeOnly && config.maxSubdivisionLevel > MaxSubdivLevelGfx)
         return m_log.InvalidArg("[Invalid Arg] - maxSubdivisionLevel must be less than MaxSubdivLevelGfx(10) for non-compute only baking");
     if (computeOnly && config.maxSubdivisionLevel > MaxSubdivLevelCS)
@@ -726,7 +724,7 @@ ommResult PipelineImpl::InitGlobalConstants(const ommGpuDispatchConfigDesc& conf
 
     cbuffer = {0, };
     cbuffer.IndexCount                                 = config.indexCount;
-    cbuffer.IndexOffset                                = config.indexOffsetInBytes;
+    cbuffer.IndexOffset                                = config.indexOffset;
     cbuffer.PrimitiveCount                             = primitiveCount;
     cbuffer.MaxBatchCount                              = info.MaxBatchCount;
     cbuffer.MaxOutOmmArraySize                         = preBuildInfo.outOmmArraySizeInBytes;

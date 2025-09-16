@@ -10,10 +10,10 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 #define OMM_DECLARE_GLOBAL_CONSTANT_BUFFER						\
 OMM_CONSTANTS_START(GlobalConstants)							\
 	OMM_CONSTANT(uint, IndexCount)								\
-	OMM_CONSTANT(uint, IndexOffsetInBytes)						\
+	OMM_CONSTANT(uint, IndexOffset)								\
 	OMM_CONSTANT(uint, PrimitiveCount)							\
 	OMM_CONSTANT(uint, MaxBatchCount)							\
-
+																\
 	OMM_CONSTANT(uint, MaxOutOmmArraySize)						\
 	OMM_CONSTANT(uint, OmmIndexFormat)							\
 	OMM_CONSTANT(uint, EnableSpecialIndices)					\
