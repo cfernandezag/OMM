@@ -869,6 +869,7 @@ nvrhi::BufferHandle GpuBakeNvrhiImpl::GetBufferResource(
 		break;
 	case omm::Gpu::ResourceType::IN_INDEX_BUFFER:
 		resourceHandle = params.indexBuffer;
+		offsetInBytes = params.indexBufferOffsetInBytes;
 		break;
 	case omm::Gpu::ResourceType::IN_TEXCOORD_BUFFER:
 		resourceHandle = params.texCoordBuffer;
