@@ -36,6 +36,7 @@ namespace {
 		BlueChannel						= 1u << 6,
 		SetupBeforeBuild				= 1u << 7,
 		EnablePostDispatchInfoStats		= 1u << 8,
+		Enable16BitInputIndexBuffer		= 1u << 9,
 	};
 
 	class OMMBakeTestGPU : public ::testing::TestWithParam<TestSuiteConfig> {
@@ -71,6 +72,7 @@ namespace {
 				return 2;
 			return 3;
 		}
+		bool Enable16BitInputIndexBuffer() const { return (GetParam() & TestSuiteConfig::Enable16BitInputIndexBuffer) == TestSuiteConfig::Enable16BitInputIndexBuffer; }
 
 		std::vector<uint32_t> ConvertTexCoords(nvrhi::Format format, float* texCoords, uint32_t texCoordsSize)
 		{
@@ -107,6 +109,8 @@ namespace {
 			uint32_t subdivisionLevel = 5;
 			int2 texSize = { 1024, 1024 };
 			uint32_t indexBufferSize = 0;
+			uint32_t numIndices = 0;
+			uint32_t indexOffset = 0;
 			uint32_t* triangleIndices = nullptr;
 			nvrhi::Format texCoordFormat = nvrhi::Format::R32_FLOAT;
 			void* texCoords = nullptr;
@@ -171,10 +175,27 @@ namespace {
 
 			// Upload index buffer
 			nvrhi::BufferHandle ib;
+			uint32_t numIndices = p.indexBufferSize / sizeof(uint32_t);
 			{
-				ib = m_device->createBuffer({ .byteSize = p.indexBufferSize, .debugName = "ib", .format = nvrhi::Format::R32_UINT, .canHaveUAVs = true, .canHaveTypedViews = true, .canHaveRawViews = true });
-				m_commandList->beginTrackingBufferState(ib, nvrhi::ResourceStates::Common);
-				m_commandList->writeBuffer(ib, p.triangleIndices, p.indexBufferSize);
+				if (Enable16BitInputIndexBuffer() && false)
+				{
+					std::vector<uint16_t> indexBufferR16;
+					indexBufferR16.resize(numIndices);
+					for (uint32_t i = 0; i < numIndices; ++i)
+					{
+						uint32_t index = p.triangleIndices[i];
+						indexBufferR16[i] = (uint16_t)index;
+					}
+					ib = m_device->createBuffer({ .byteSize = p.indexBufferSize, .debugName = "ib", .format = nvrhi::Format::R16_UINT, .canHaveUAVs = true, .canHaveTypedViews = true, .canHaveRawViews = true });
+					m_commandList->beginTrackingBufferState(ib, nvrhi::ResourceStates::Common);
+					m_commandList->writeBuffer(ib, indexBufferR16.data(), indexBufferR16.size());
+				}
+				else
+				{
+					ib = m_device->createBuffer({ .byteSize = p.indexBufferSize, .debugName = "ib", .format = nvrhi::Format::R32_UINT, .canHaveUAVs = true, .canHaveTypedViews = true, .canHaveRawViews = true });
+					m_commandList->beginTrackingBufferState(ib, nvrhi::ResourceStates::Common);
+					m_commandList->writeBuffer(ib, p.triangleIndices, p.indexBufferSize);
+				}
 			}
 
 			// Upload texcoords
@@ -199,7 +220,8 @@ namespace {
 			input.texCoordBuffer = vb;
 			input.texCoordStrideInBytes = 0;
 			input.indexBuffer = ib;
-			input.numIndices = p.indexBufferSize / sizeof(uint32_t);
+			input.indexOffset = p.indexOffset;
+			input.numIndices = p.numIndices == 0 ? numIndices : p.numIndices;
 			input.maxSubdivisionLevel = p.subdivisionLevel;
 			input.format = p.format == omm::Format::OC1_2_State ? nvrhi::rt::OpacityMicromapFormat::OC1_2_State : nvrhi::rt::OpacityMicromapFormat::OC1_4_State;
 			input.dynamicSubdivisionScale = 0.f;
@@ -238,9 +260,9 @@ namespace {
 				ommIndexFormat = info.ommIndexFormat;
 				ommIndexCount = info.ommIndexCount;
 
-				res.ommDescBuffer = m_device->createBuffer({ .byteSize = info.ommDescBufferSize, .debugName = "omDescBuffer", .canHaveUAVs = true, .canHaveRawViews = true });
-				res.ommIndexBuffer = m_device->createBuffer({ .byteSize = info.ommIndexBufferSize, .debugName = "omIndexBuffer", .canHaveUAVs = true, .canHaveRawViews = true });
-				res.ommDescArrayHistogramBuffer = m_device->createBuffer({ .byteSize = info.ommDescArrayHistogramSize , .debugName = "omUsageDescBuffer" , .canHaveUAVs = true, .canHaveRawViews = true });
+				res.ommDescBuffer = m_device->createBuffer({ .byteSize = info.ommDescBufferSize, .debugName = "ommDescBuffer", .canHaveUAVs = true, .canHaveRawViews = true });
+				res.ommIndexBuffer = m_device->createBuffer({ .byteSize = info.ommIndexBufferSize, .debugName = "ommIndexBuffer", .canHaveUAVs = true, .canHaveRawViews = true });
+				res.ommDescArrayHistogramBuffer = m_device->createBuffer({ .byteSize = info.ommDescArrayHistogramSize , .debugName = "ommUsageDescBuffer" , .canHaveUAVs = true, .canHaveRawViews = true });
 				res.ommIndexHistogramBuffer = m_device->createBuffer({ .byteSize = info.ommIndexHistogramSize , .debugName = "ommIndexHistogramBuffer" , .canHaveUAVs = true, .canHaveRawViews = true });
 				res.ommPostDispatchInfoBuffer = m_device->createBuffer({ .byteSize = info.ommPostDispatchInfoBufferSize , .debugName = "ommPostDispatchInfoBuffer" , .canHaveUAVs = true, .canHaveRawViews = true });
 
@@ -1240,6 +1262,51 @@ namespace {
 		}
 	}
 
+	TEST_P(OMMBakeTestGPU, Julia_T_AND_UO_IndexOffset) {
+
+		uint32_t subdivisionLevel = 9;
+		uint32_t numMicroTris = omm::bird::GetNumMicroTriangles(subdivisionLevel);
+
+		uint32_t triangleIndices[] = { 0, 0xFFFFFFFF, 0xDEADBEEF, 0, 0x7FFFFFFF, 0xDEADBEEF, 0, 1, 2, };
+		float texCoords[] = { 0.2f, 0.f,  0.1f, 0.8f,  0.9f, 0.1f };
+
+		OmmBakeParams p;
+		p.alphaCutoff = 0.5f;
+		p.alphaCutoffGT = omm::OpacityState::UnknownOpaque;
+		p.alphaCutoffLE = omm::OpacityState::Transparent;
+		p.subdivisionLevel = subdivisionLevel;
+		p.texSize = { 1024, 1024 };
+		p.texCb = &GetJulia;
+		p.format = omm::Format::OC1_4_State;
+		p.triangleIndices = triangleIndices;
+		p.numIndices = 3;
+		p.indexOffset = 6;
+		p.indexBufferSize = sizeof(triangleIndices);
+		p.texCoordFormat = nvrhi::Format::R32_FLOAT;
+		p.texCoords = texCoords;
+		p.texCoordBufferSize = sizeof(texCoords);
+		omm::Debug::Stats stats = RunOmmBake(p);
+
+		if (ComputeOnly())
+		{
+			ExpectEqual(stats, {
+				.totalOpaque = 0,
+				.totalTransparent = 4300,
+				.totalUnknownTransparent = 0,
+				.totalUnknownOpaque = 3116 + 254728,
+				});
+		}
+		else
+		{
+			ExpectEqual(stats, {
+				.totalOpaque = 0,
+				.totalTransparent = 4300,
+				.totalUnknownTransparent = 0,
+				.totalUnknownOpaque = 3121 + 254723,
+				});
+		}
+	}
+
 	TEST_P(OMMBakeTestGPU, Julia_FLIP_T_AND_O) {
 
 		uint32_t subdivisionLevel = 9;
@@ -1446,6 +1513,8 @@ namespace {
 			str += "SetupBeforeBuild_";
 		if ((info.param & TestSuiteConfig::EnablePostDispatchInfoStats) == TestSuiteConfig::EnablePostDispatchInfoStats)
 			str += "PostDispatchInfoStats_";
+		if ((info.param & TestSuiteConfig::Enable16BitInputIndexBuffer) == TestSuiteConfig::Enable16BitInputIndexBuffer)
+			str += "Enable16BitInputIndexBuffer_";
 		if (str.length() > 0)
 			str.pop_back();
 
@@ -1466,9 +1535,10 @@ namespace {
 							    TestSuiteConfig::RedChannel,
 							    TestSuiteConfig::BlueChannel,
 							    TestSuiteConfig::GreenChannel,
-							    
+							    TestSuiteConfig::Enable16BitInputIndexBuffer,
+
 							    TestSuiteConfig::SetupBeforeBuild,
-								TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::EnablePostDispatchInfoStats,
+							    TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::EnablePostDispatchInfoStats,
 							    TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::DisableSpecialIndices,
 							    TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::DisableSpecialIndices | TestSuiteConfig::EnablePostDispatchInfoStats,
 							    TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::Force32BitIndices,
@@ -1476,6 +1546,7 @@ namespace {
 							    TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::RedChannel,
 							    TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::BlueChannel,
 							    TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::GreenChannel,
+							    TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::Enable16BitInputIndexBuffer,
 								
 							    TestSuiteConfig::ComputeOnly,
 							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::EnablePostDispatchInfoStats,
@@ -1486,7 +1557,8 @@ namespace {
 							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::RedChannel,
 							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::BlueChannel,
 							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::GreenChannel,
-							    
+							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::Enable16BitInputIndexBuffer,
+								
 							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::SetupBeforeBuild,
 							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::EnablePostDispatchInfoStats,
 							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::DisableSpecialIndices,
@@ -1495,7 +1567,8 @@ namespace {
 							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::DisableTexCoordDeduplication,
 							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::RedChannel,
 							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::BlueChannel,
-							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::GreenChannel
+							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::GreenChannel,
+							    TestSuiteConfig::ComputeOnly | TestSuiteConfig::SetupBeforeBuild | TestSuiteConfig::Enable16BitInputIndexBuffer
 						), CustomParamName);
 
 }  // namespace
